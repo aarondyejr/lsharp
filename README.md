@@ -1,4 +1,4 @@
-# M# (MSharp) is a OOP programming language built on the C# programming language
+# L# (LSharp) is a OOP programming language built on the C# programming language
 
 ## Main goals for this project?
 
