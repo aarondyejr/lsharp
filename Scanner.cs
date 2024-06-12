@@ -1,8 +1,10 @@
 using System.Diagnostics.Tracing;
+using System.Globalization;
 using System.Text;
 
 class Scanner
 {
+    private static CultureInfo culture = new CultureInfo("en-US");
     private string Source;
     private List<Token> tokens = new List<Token>();
 
@@ -110,7 +112,7 @@ class Scanner
                 // A Error rabbit-hole if you will.
                 if (IsDigit(c))
                 {
-                    HandleNumber();
+                    HandleNumber(c);
                 }
                 else if (IsAlpha(c))
                 {
@@ -190,24 +192,106 @@ class Scanner
     // It will then add a token with type STRING and that string value.
     private void HandleString()
     {
-        while (Peek() != '"' && !IsAtEnd())
+        StringBuilder builder = new StringBuilder();
+        StringBuilder unicodeBuilder = new StringBuilder();
+        // 0 -> ordinary parsing
+        // 1 -> escaped
+        // 2 -> parsing \x, \u, or \U
+        byte status = 0;
+        // 2 -> \x??
+        // 4 -> \u????
+        // 6 -> \U??????
+        int maxUnicodeLength = 0;
+      
+        while (!IsAtEnd())
         {
-            if (Peek() == '\n') line++;
+            char peeked = Peek();
+            char processed = peeked;
+            
+            switch (peeked)
+            {
+                case '\n': line++; break;
+                case '"':
+                    if (status == 0) {
+                        goto HANDLE_STRING_END;
+                    } else if (status == 1) {
+                        status = 0;
+                    } else {
+                        Lox.Error(line, "Unexpected unicode: \"");
+                        return;
+                    }
+                    break;
+                case '\\':
+                    if (status == 0) {
+                        status = 1;
+                        Advance();
+                        continue;
+                    } else if (status == 1) {
+                        status = 0;
+                    } else {
+                        Lox.Error(line, "Unexpected unicode: \\");
+                        return;
+                    }
+                    break;
+                default:
+                    if (status == 1) {
+                        switch (peeked) {
+                            case 'U': status = 2; maxUnicodeLength = 6; Advance(); continue;
+                            case 'u': status = 2; maxUnicodeLength = 4; Advance(); continue;
+                            case 'x': status = 2; maxUnicodeLength = 2; Advance(); continue;
+                            case 'n': processed = '\n'; break;
+                            case 'r': processed = '\r'; break;
+                            case '0': processed = '\0'; break;
+                            default: Lox.Error(line, "Unexpected string escape."); return;
+                        }
+                        
+                        status = 0;
+                    } else if (status == 2) {
+                        if (unicodeBuilder.Length < maxUnicodeLength)
+                        {
+                            if (!IsBase(peeked, 16))
+                            {
+                                Lox.Error(line, "Unexpected unicode: " + peeked);
+                                return;
+                            }
+                        
+                            unicodeBuilder.Append(peeked);
+                            Advance();
+                            continue;
+                        }
+                        else
+                        {
+                            int codepoint = Convert.ToInt32(unicodeBuilder.ToString(), 16);
+                            
+                            if (codepoint >= 0x110000)
+                            {
+                                Lox.Error(line, "Unicode codepoint out of the unicode range.");
+                                return;
+                            }
+                          
+                            builder.Append(Char.ConvertFromUtf32(codepoint));
+                            unicodeBuilder.Clear();
+                            status = 0;
+                        }
+                    }
+                    break;
+            }
+            
+            builder.Append(processed);
             Advance();
         }
 
+HANDLE_STRING_END:
         if (IsAtEnd())
         {
-            Lox.Error(line, "Unpexected string.");
+            Lox.Error(line, "Unexpected string (is already at end).");
             return;
         }
 
         // The closing "
         Advance();
 
-        // Trim surrounding quotes
-        string value = Source.Substring(start + 1, current - start - 2);
-        AddToken(TokenType.STRING, value);
+        AddToken(TokenType.STRING, builder.ToString());
     }
 
     // HandleNumber is fundamentally the same as HandleString with some slight differences
@@ -217,21 +301,72 @@ class Scanner
     // consuming the numbers until there are none left. I will explain more on what PeekNext does in the comments of that method.
     // Like always we add the token parsing the substring into a double once again using the start positon, and the end position being current - start
 
-    private void HandleNumber()
+    private void HandleNumber(char initial)
     {
-        while (IsDigit(Peek()))
+        StringBuilder builder = new StringBuilder();
+        int b = 10;
+        
+        if (initial == '0')
         {
+            switch (Char.ToLower(Peek()))
+            {
+                case 'b': b = 2; break; // binary
+                case 'o': b = 8; break; // octal
+                case 'x': b = 16; break; // hex
+                default: Lox.Error(line, "Invalid base."); return;
+            }
+            
             Advance();
-        };
-
-        if (Peek() == '.' && IsDigit(PeekNext()))
-        {
-            Advance();
-
-            while (IsDigit(Peek())) Advance();
         }
+        else
+        {
+            builder.Append(initial);
+        }
+        
+        while (true)
+        {
+            char peeked = Peek();
+            
+            if (!IsBase(peeked, b))
+            {
+                break;
+            }
+            
+            builder.Append(peeked);
+            Advance();
+        }
+        
+        double result;
 
-        AddToken(TokenType.NUMBER, Double.Parse(Source.Substring(start, current - start)));
+        if (b != 10)
+        {
+            result = (double)Convert.ToInt32(builder.ToString(), b);
+        }
+        else
+        {
+            if (Peek() == '.' && IsDigit(PeekNext()))
+            {
+                builder.Append('.');
+                Advance();
+                
+                while (true)
+                {
+                    char peeked = Peek();
+                    
+                    if (!IsDigit(peeked))
+                    {
+                        break;
+                    }
+                    
+                    builder.Append(peeked);
+                    Advance();
+                }
+            }
+            
+            result = Double.Parse(builder.ToString(), culture);
+        }
+        
+        AddToken(TokenType.NUMBER, result);
     }
 
     // HandleIdentifer is a little special, it needs to be able to check that identifiers programmers set are not reserved
@@ -261,6 +396,18 @@ class Scanner
         if (current + 1 >= Source.Length) return '\0';
 
         return Source[current + 1];
+    }
+    
+    private bool IsBase(char c, int b)
+    {
+        switch (b)
+        {
+            case 2: return c == '0' || c == '1';
+            case 8: return c >= '0' && c <= '7';
+            case 10: return IsDigit(c);
+            case 16: return IsDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            default: return false; // unreachable.
+        }
     }
 
     // I know char.IsDigit exists I just wanted to be different
