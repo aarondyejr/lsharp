@@ -263,7 +263,7 @@ class Scanner
                         {
                             int codepoint = Convert.ToInt32(unicodeBuilder.ToString(), 16);
                             
-                            if (codepoint > 0x110000)
+                            if (codepoint >= 0x110000)
                             {
                                 Lox.Error(line, "Unicode codepoint out of the unicode range.");
                                 return;
