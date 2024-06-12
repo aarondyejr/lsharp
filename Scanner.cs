@@ -1,4 +1,5 @@
 using System.Diagnostics.Tracing;
+using System.Text;
 
 class Scanner
 {
