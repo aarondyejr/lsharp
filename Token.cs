@@ -2,12 +2,12 @@ class Token
 {
     public TokenType type;
     public string lexeme;
-    public object? literal;
+    public object literal;
     public int line;
 
     public int Something { get => Something; set => Something = value; }
 
-    public Token(TokenType t, string lex, object? lit, int lin)
+    public Token(TokenType t, string lex, object lit, int lin)
     {
         type = t;
         lexeme = lex;

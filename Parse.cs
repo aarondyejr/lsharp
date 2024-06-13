@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 class Parser
 {
     private class ParserError : RuntimeException
@@ -93,7 +92,7 @@ class Parser
     {
         if (MatchExpr(TokenType.FALSE)) return new Expr.Literal(false);
         if (MatchExpr(TokenType.TRUE)) return new Expr.Literal(true);
-        if (MatchExpr(TokenType.NIL)) return new Expr.Literal(null);
+        if (MatchExpr(TokenType.NIL)) return new Expr.Literal(Nil.Instance);
 
         if (MatchExpr(TokenType.NUMBER, TokenType.STRING))
         {

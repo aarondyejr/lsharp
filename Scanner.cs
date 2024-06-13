@@ -50,7 +50,7 @@ class Scanner
             ScanToken();
         }
 
-        tokens.Add(new Token(TokenType.EOF, "", null, line));
+        tokens.Add(new Token(TokenType.EOF, "", Nil.Instance, line));
 
         return tokens;
     }
@@ -137,7 +137,7 @@ class Scanner
     // Here we are just setting a base AddToken method for when we only care about the Type
     private void AddToken(TokenType type)
     {
-        AddToken(type, null);
+        AddToken(type, Nil.Instance);
     }
 
     // Here we are making an overload to the AddToken method
@@ -145,7 +145,7 @@ class Scanner
     // Remember start is set to be start = current which is updated on each while loop invokation in `ScanTokens`
     // We then set the ending positon to be the current place we are lexing, minus the start
     // I am a little fuzzy on why this is the case so whoever reads this please reach out to me at misty.dev and give me an explanation
-    private void AddToken(TokenType type, object? literal)
+    private void AddToken(TokenType type, object literal)
     {
         string text = Source.Substring(start, current - start);
         tokens.Add(new Token(type, text, literal, line));
