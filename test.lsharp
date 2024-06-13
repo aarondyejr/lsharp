@@ -1,1 +1,3 @@
-var x = "hello, world";
+fun apple (int x) {
+    var a = x;
+}

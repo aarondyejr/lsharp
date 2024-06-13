@@ -5,6 +5,8 @@ class Token
     public object? literal;
     public int line;
 
+    public int Something { get => Something; set => Something = value; }
+
     public Token(TokenType t, string lex, object? lit, int lin)
     {
         type = t;

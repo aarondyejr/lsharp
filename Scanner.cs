@@ -202,40 +202,52 @@ class Scanner
         // 4 -> \u????
         // 6 -> \U??????
         int maxUnicodeLength = 0;
-      
+
         while (!IsAtEnd())
         {
             char peeked = Peek();
             char processed = peeked;
-            
+
             switch (peeked)
             {
                 case '\n': line++; break;
                 case '"':
-                    if (status == 0) {
+                    if (status == 0)
+                    {
                         goto HANDLE_STRING_END;
-                    } else if (status == 1) {
+                    }
+                    else if (status == 1)
+                    {
                         status = 0;
-                    } else {
+                    }
+                    else
+                    {
                         Lox.Error(line, "Unexpected unicode: \"");
                         return;
                     }
                     break;
                 case '\\':
-                    if (status == 0) {
+                    if (status == 0)
+                    {
                         status = 1;
                         Advance();
                         continue;
-                    } else if (status == 1) {
+                    }
+                    else if (status == 1)
+                    {
                         status = 0;
-                    } else {
+                    }
+                    else
+                    {
                         Lox.Error(line, "Unexpected unicode: \\");
                         return;
                     }
                     break;
                 default:
-                    if (status == 1) {
-                        switch (peeked) {
+                    if (status == 1)
+                    {
+                        switch (peeked)
+                        {
                             case 'U': status = 2; maxUnicodeLength = 6; Advance(); continue;
                             case 'u': status = 2; maxUnicodeLength = 4; Advance(); continue;
                             case 'x': status = 2; maxUnicodeLength = 2; Advance(); continue;
@@ -244,9 +256,11 @@ class Scanner
                             case '0': processed = '\0'; break;
                             default: Lox.Error(line, "Unexpected string escape."); return;
                         }
-                        
+
                         status = 0;
-                    } else if (status == 2) {
+                    }
+                    else if (status == 2)
+                    {
                         if (unicodeBuilder.Length < maxUnicodeLength)
                         {
                             if (!IsBase(peeked, 16))
@@ -254,7 +268,7 @@ class Scanner
                                 Lox.Error(line, "Unexpected unicode: " + peeked);
                                 return;
                             }
-                        
+
                             unicodeBuilder.Append(peeked);
                             Advance();
                             continue;
@@ -262,26 +276,26 @@ class Scanner
                         else
                         {
                             int codepoint = Convert.ToInt32(unicodeBuilder.ToString(), 16);
-                            
+
                             if (codepoint >= 0x110000)
                             {
                                 Lox.Error(line, "Unicode codepoint out of the unicode range.");
                                 return;
                             }
-                          
-                            builder.Append(Char.ConvertFromUtf32(codepoint));
+
+                            builder.Append(char.ConvertFromUtf32(codepoint));
                             unicodeBuilder.Clear();
                             status = 0;
                         }
                     }
                     break;
             }
-            
+
             builder.Append(processed);
             Advance();
         }
 
-HANDLE_STRING_END:
+    HANDLE_STRING_END:
         if (IsAtEnd())
         {
             Lox.Error(line, "Unexpected string (is already at end).");
@@ -305,37 +319,37 @@ HANDLE_STRING_END:
     {
         StringBuilder builder = new StringBuilder();
         int b = 10;
-        
+
         if (initial == '0')
         {
-            switch (Char.ToLower(Peek()))
+            switch (char.ToLower(Peek()))
             {
                 case 'b': b = 2; break; // binary
                 case 'o': b = 8; break; // octal
                 case 'x': b = 16; break; // hex
                 default: Lox.Error(line, "Invalid base."); return;
             }
-            
+
             Advance();
         }
         else
         {
             builder.Append(initial);
         }
-        
+
         while (true)
         {
             char peeked = Peek();
-            
+
             if (!IsBase(peeked, b))
             {
                 break;
             }
-            
+
             builder.Append(peeked);
             Advance();
         }
-        
+
         double result;
 
         if (b != 10)
@@ -348,24 +362,24 @@ HANDLE_STRING_END:
             {
                 builder.Append('.');
                 Advance();
-                
+
                 while (true)
                 {
                     char peeked = Peek();
-                    
+
                     if (!IsDigit(peeked))
                     {
                         break;
                     }
-                    
+
                     builder.Append(peeked);
                     Advance();
                 }
             }
-            
+
             result = Double.Parse(builder.ToString(), culture);
         }
-        
+
         AddToken(TokenType.NUMBER, result);
     }
 
@@ -397,7 +411,7 @@ HANDLE_STRING_END:
 
         return Source[current + 1];
     }
-    
+
     private bool IsBase(char c, int b)
     {
         switch (b)
