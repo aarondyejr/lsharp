@@ -99,6 +99,11 @@ class Parser
             return new Expr.Literal(Previous().literal);
         }
 
+        if (MatchExpr(TokenType.IDENTIFIER))
+        {
+            return new Expr.Variable(Previous());
+        }
+
         if (MatchExpr(TokenType.LEFT_PAREN))
         {
             Expr expr = Expression();
@@ -109,16 +114,16 @@ class Parser
         throw Error(Peek(), "Expected expression");
     }
 
-    public Expr? Parse()
+    public List<Stmt> Parse()
     {
-        try
+        List<Stmt?> statements = new List<Stmt>()!;
+
+        while (!IsAtEnd())
         {
-            return Expression();
+            statements.Add(Decleration());
         }
-        catch
-        {
-            return null;
-        }
+
+        return statements!;
     }
 
     private Token Consume(TokenType type, string message)
@@ -198,5 +203,56 @@ class Parser
     private Token Previous()
     {
         return tokens[current - 1];
+    }
+
+    private Stmt Statement()
+    {
+        if (MatchExpr(TokenType.PRINT)) return PrintStatement();
+
+        return ExpressionStatement();
+    }
+
+    private Stmt PrintStatement()
+    {
+        Expr value = Expression();
+        Consume(TokenType.SEMICOLON, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt ExpressionStatement()
+    {
+        Expr value = Expression();
+        Consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+        return new Stmt.Expression(value);
+    }
+    private Stmt? Decleration()
+    {
+        try
+        {
+            if (MatchExpr(TokenType.VAR)) return VarDecleration();
+
+            return Statement();
+        }
+        catch (ParserError error)
+        {
+            Syncronize();
+            return null;
+        }
+    }
+
+    private Stmt VarDecleration()
+    {
+        Token name = Consume(TokenType.IDENTIFIER, "Expect variable name.");
+
+        Expr? initializer = Nil.Instance;
+
+        if (MatchExpr(TokenType.EQUAL))
+        {
+            initializer = Expression();
+        }
+
+        Consume(TokenType.SEMICOLON, "Expect ';' after variable decleration.");
+
+        return new Stmt.Var(name, initializer);
     }
 }

@@ -1,12 +1,16 @@
-class Interpreter : Expr.Visitor<object>
+class Interpreter : Expr.Visitor<object>, Stmt.Visitor<object>
 {
 
-    public void Interpret(Expr expr)
+    private Env env = new Env();
+
+    public void Interpret(List<Stmt> statements)
     {
         try
         {
-            object value = Evaluate(expr);
-            Console.WriteLine(Stringify(value));
+            foreach (Stmt statement in statements)
+            {
+                Execute(statement);
+            }
         }
         catch (RuntimeError err)
         {
@@ -15,7 +19,7 @@ class Interpreter : Expr.Visitor<object>
     }
     public object VisitLiteralExpr(Expr.Literal expr)
     {
-        return expr.value;
+        return expr.value!;
     }
 
     public object VisitGroupingExpr(Expr.Grouping expr)
@@ -87,6 +91,35 @@ class Interpreter : Expr.Visitor<object>
         return Nil.Instance;
     }
 
+    public object VisitExpressionStmt(Stmt.Expression statement)
+    {
+        Evaluate(statement.expression);
+        return Nil.Instance;
+    }
+    public object VisitPrintStmt(Stmt.Print statement)
+    {
+        object value = Evaluate(statement.expression);
+        Console.WriteLine(Stringify(value));
+        return Nil.Instance;
+    }
+
+    public object VisitVarStmt(Stmt.Var statement)
+    {
+        object? value = Nil.Instance;
+        if (statement.initializer != Nil.Instance)
+        {
+            value = Evaluate(statement.initializer);
+        }
+
+        env.Define(statement.name.lexeme, value);
+        return Nil.Instance;
+    }
+
+    public object VisitVariableExpr(Expr.Variable variable)
+    {
+        return env.Get(variable.name);
+    }
+
     private object Evaluate(Expr expr)
     {
         return expr.Accept(this);
@@ -134,5 +167,10 @@ class Interpreter : Expr.Visitor<object>
         }
 
         return obj.ToString()!;
+    }
+
+    private void Execute(Stmt statement)
+    {
+        statement.Accept(this);
     }
 }

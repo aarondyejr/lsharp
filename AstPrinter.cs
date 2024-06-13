@@ -27,6 +27,11 @@ class AstPrinter : Expr.Visitor<string>
         return parenthesize(expr.op.lexeme, expr.right);
     }
 
+    public string VisitVariableExpr(Expr.Variable expr)
+    {
+        throw new NotImplementedException();
+    }
+
     private string parenthesize(string name, params Expr[] exprs)
     {
         StringBuilder builder = new StringBuilder();
